@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const youtubedl = require('youtube-dl-exec');
+const https = require('https');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -12,103 +12,110 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-const PROXIES = [
-  'http://43.153.103.58:8080',
-  'http://47.251.43.179:8080'
-];
+// Piped API instance (hızlı ve stabil)
+const PIPED_API = 'https://api.piped.projectkrea.id';
 
-function getRandomProxy() {
-  return PROXIES[Math.floor(Math.random() * PROXIES.length)];
+function pipedRequest(path) {
+  return new Promise((resolve, reject) => {
+    https.get(PIPED_API + path, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          reject(new Error('JSON parse hatası'));
+        }
+      });
+    }).on('error', reject).setTimeout(15000, () => reject(new Error('timeout')));
+  });
+}
+
+// YouTube URL'den video ID çıkar
+function extractVideoId(url) {
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
 }
 
 app.post('/info', async (req, res) => {
   const { url } = req.body;
-  if (!url) return res.status(400).json({ error: 'URL gerekli' });
+  const videoId = extractVideoId(url);
+  
+  if (!videoId) return res.status(400).json({ error: 'Geçersiz YouTube URL' });
   
   try {
-    const proxy = getRandomProxy();
-    const info = await youtubedl(url, {
-      dumpSingleJson: true,
-      noWarnings: true,
-      proxy: proxy
-    });
+    const data = await pipedRequest(`/streams/${videoId}`);
     
-    const formats = (info.formats || [])
-      .filter(f => f.height && f.vcodec !== 'none')
-      .sort((a, b) => b.height - a.height)
-      .reduce((acc, f) => {
-        if (!acc.find(x => x.height === f.height)) {
-          acc.push({
-            format_id: f.format_id,
-            height: f.height,
-            ext: f.ext,
-            filesize: f.filesize || f.filesize_approx
+    // Formatları düzenle
+    const formats = [];
+    
+    // Video + Ses formatları
+    if (data.videoStreams) {
+      data.videoStreams
+        .filter(v => v.format === 'MPEG_4')
+        .forEach(v => {
+          formats.push({
+            format_id: v.url.split('itag=')[1]?.split('&')[0] || 'best',
+            height: v.quality?.replace('p', '') || 720,
+            ext: 'mp4',
+            filesize: null,
+            url: v.url
           });
-        }
-        return acc;
-      }, [])
-      .slice(0, 6);
+        });
+    }
+    
+    // Sadece ses
+    if (data.audioStreams && data.audioStreams[0]) {
+      formats.push({
+        format_id: 'audio',
+        height: 'MP3',
+        ext: 'mp3',
+        filesize: null,
+        url: data.audioStreams[0].url
+      });
+    }
     
     res.json({
-      id: info.id,
-      title: info.title,
-      thumbnail: info.thumbnail,
-      duration: info.duration,
-      channel: info.channel || info.uploader,
-      formats
+      id: videoId,
+      title: data.title || 'Video',
+      thumbnail: data.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+      duration: data.duration,
+      channel: data.uploader || 'Bilinmiyor',
+      formats: formats.slice(0, 6)
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Video bilgisi alınamadı: ' + e.message });
   }
 });
 
 app.post('/download', async (req, res) => {
   const { url, formatId, mp3 } = req.body;
-  if (!url) return res.status(400).json({ error: 'URL gerekli' });
-
-  const tmpBase = path.join(os.tmpdir(), `mahnes_${Date.now()}`);
-  const ext = mp3 ? 'mp3' : 'mp4';
+  const videoId = extractVideoId(url);
+  
+  if (!videoId) return res.status(400).json({ error: 'Geçersiz URL' });
   
   try {
-    const proxy = getRandomProxy();
-    const info = await youtubedl(url, {
-      dumpSingleJson: true,
-      noWarnings: true,
-      proxy: proxy
-    });
+    const data = await pipedRequest(`/streams/${videoId}`);
+    const title = (data.title || 'video').replace(/[<>:"/\\|?*]/g, '').slice(0, 60);
     
-    const safeTitle = (info.title || 'video')
-      .replace(/[<>:"/\\|?*]/g, '').slice(0, 60);
-
-    const args = {
-      noWarnings: true,
-      proxy: proxy,
-      output: mp3 ? `${tmpBase}.%(ext)s` : `${tmpBase}.${ext}`
-    };
+    let streamUrl;
     
-    if (mp3) {
-      args.extractAudio = true;
-      args.audioFormat = 'mp3';
-      args.audioQuality = 0;
-    } else if (formatId) {
-      args.format = `${formatId}+bestaudio/best`;
+    if (mp3 && data.audioStreams && data.audioStreams[0]) {
+      streamUrl = data.audioStreams[0].url;
     } else {
-      args.format = 'bestvideo+bestaudio/best';
+      const video = data.videoStreams?.find(v => v.format === 'MPEG_4');
+      if (!video) throw new Error('Video stream bulunamadı');
+      streamUrl = video.url;
     }
-
-    await youtubedl(url, args);
     
-    const finalFile = mp3 ? `${tmpBase}.mp3` : `${tmpBase}.${ext}`;
-    if (!fs.existsSync(finalFile)) throw new Error('Dosya oluşturulamadı');
-
-    const stat = fs.statSync(finalFile);
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(safeTitle)}.${ext}"`);
-    res.setHeader('Content-Type', mp3 ? 'audio/mpeg' : 'video/mp4');
-    res.setHeader('Content-Length', stat.size);
-    
-    const stream = fs.createReadStream(finalFile);
-    stream.pipe(res);
-    stream.on('end', () => fs.unlink(finalFile, () => {}));
+    // Stream'i yönlendir
+    https.get(streamUrl, (streamRes) => {
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(title)}.${mp3 ? 'mp3' : 'mp4'}"`);
+      res.setHeader('Content-Type', mp3 ? 'audio/mpeg' : 'video/mp4');
+      streamRes.pipe(res);
+    }).on('error', (e) => {
+      res.status(500).json({ error: 'İndirme hatası: ' + e.message });
+    });
     
   } catch (e) {
     res.status(500).json({ error: e.message });
