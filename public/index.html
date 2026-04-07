@@ -1,181 +1,59 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>mahnes</title>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Nunito', sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 0 0 60px;
-      background: #f5f2e8;
-      position: relative;
-    }
-    .bg {
-      position: fixed;
-      inset: 0;
-      background: url('bg.png') center top / cover no-repeat;
-      opacity: 0.22;
-      z-index: 0;
-      pointer-events: none;
-    }
-    .header-band {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      width: 100%;
-      padding: 18px 24px 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(12px);
-      background: rgba(245,242,232,0.75);
-      border-bottom: 1.5px solid rgba(0,0,0,0.06);
-    }
-    .logo-pill {
-      background: #3a3a3a;
-      color: #f5f2e8;
-      font-weight: 800;
-      font-size: 18px;
-      letter-spacing: 1px;
-      padding: 6px 16px;
-      border-radius: 99px;
-    }
-    .card {
-      position: relative;
-      z-index: 5;
-      width: calc(100% - 32px);
-      max-width: 480px;
-      margin: 28px 16px 0;
-      background: rgba(255,255,255,0.72);
-      backdrop-filter: blur(20px);
-      border: 1.5px solid rgba(255,255,255,0.9);
-      border-radius: 24px;
-      padding: 24px 20px 20px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.09);
-    }
-    .input-row { display: flex; gap: 8px; }
-    .url-input {
-      flex: 1;
-      background: rgba(245,242,232,0.8);
-      border: 1.5px solid rgba(0,0,0,0.1);
-      border-radius: 14px;
-      color: #2a2a2a;
-      font-family: 'Nunito', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      padding: 13px 16px;
-      outline: none;
-    }
-    .url-input:focus { border-color: #7ec87e; box-shadow: 0 0 0 3px rgba(126,200,126,0.15); }
-    .fetch-btn {
-      background: #3a3a3a;
-      border: none;
-      border-radius: 14px;
-      color: #f5f2e8;
-      font-weight: 800;
-      font-size: 14px;
-      padding: 13px 18px;
-      cursor: pointer;
-    }
-    .loader { display: none; text-align: center; padding: 20px; color: #888; }
-    .loader.show { display: block; }
-    .error { display: none; background: rgba(255,80,80,0.08); border-radius: 12px; padding: 11px 14px; color: #c0392b; font-weight: 600; margin-top: 10px; }
-    .error.show { display: block; }
-    .options { display: none; margin-top: 16px; }
-    .options.show { display: block; }
-    .opt-btn {
-      width: 100%;
-      background: rgba(245,242,232,0.8);
-      border: 1.5px solid rgba(0,0,0,0.09);
-      border-radius: 12px;
-      padding: 14px;
-      margin-bottom: 8px;
-      cursor: pointer;
-      font-family: 'Nunito', sans-serif;
-      font-weight: 700;
-      font-size: 14px;
-      text-align: center;
-    }
-    .opt-btn:hover { border-color: #7ec87e; background: rgba(126,200,126,0.1); }
+    body { font-family: 'Nunito', sans-serif; background: #f5f2e8; display: flex; flex-direction: column; align-items: center; padding-top: 50px; }
+    .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 90%; max-width: 400px; }
+    .input-group { display: flex; gap: 5px; margin-bottom: 20px; }
+    input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 10px; outline: none; }
+    button.main-btn { background: #3a3a3a; color: white; border: none; padding: 12px 20px; border-radius: 10px; cursor: pointer; font-weight: 800; }
+    .options { display: none; flex-direction: column; gap: 10px; }
+    .opt-btn { background: #eee; border: none; padding: 15px; border-radius: 10px; cursor: pointer; font-weight: 700; text-align: left; }
+    .opt-btn:hover { background: #7ec87e; color: white; }
+    #status { margin-top: 15px; text-align: center; font-size: 14px; color: #666; }
   </style>
 </head>
 <body>
-  <div class="bg"></div>
-  <div class="header-band">
-    <div class="logo-pill">mahnes</div>
-  </div>
   <div class="card">
-    <div class="input-row">
-      <input class="url-input" id="urlInput" placeholder="YouTube linki yapıştır..." />
-      <button class="fetch-btn" onclick="startDownload()">İNDİR</button>
+    <div class="input-group">
+      <input type="text" id="urlInput" placeholder="Link yapıştır...">
+      <button class="main-btn" onclick="showOptions()">SEÇ</button>
     </div>
-    <div class="loader" id="loader">⏳ Hazırlanıyor...</div>
-    <div class="error" id="errorBox"></div>
-    <div class="options" id="options">
-      <button class="opt-btn" onclick="downloadVideo()">📹 Video İndir (MP4)</button>
-      <button class="opt-btn" onclick="downloadAudio()">🎵 Ses İndir (MP3)</button>
+    <div id="options" class="options">
+      <button class="opt-btn" onclick="download(false, '1080')">🎬 1080p Video</button>
+      <button class="opt-btn" onclick="download(false, '720')">🎬 720p Video</button>
+      <button class="opt-btn" onclick="download(true)">🎵 MP3 Ses</button>
     </div>
+    <div id="status"></div>
   </div>
 
-<script>
-const API = window.location.origin;
-let currentUrl = '';
-
-function startDownload() {
-  currentUrl = document.getElementById('urlInput').value.trim();
-  if (!currentUrl) return;
-  
-  document.getElementById('loader').classList.add('show');
-  document.getElementById('errorBox').classList.remove('show');
-  document.getElementById('options').classList.add('show');
-  document.getElementById('loader').classList.remove('show');
-}
-
-async function downloadVideo() {
-  await doDownload(false);
-}
-
-async function downloadAudio() {
-  await doDownload(true);
-}
-
-async function doDownload(mp3) {
-  document.getElementById('loader').classList.add('show');
-  document.getElementById('options').classList.remove('show');
-  
-  try {
-    const r = await fetch(API + '/download', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({url: currentUrl, mp3})
-    });
-    
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error);
-    
-    if (d.redirectUrl) {
-      // Cobalt linkine yönlendir
-      window.open(d.redirectUrl, '_blank');
-      document.getElementById('loader').textContent = '✅ İndirme başladı!';
+  <script>
+    let videoUrl = '';
+    function showOptions() {
+      videoUrl = document.getElementById('urlInput').value;
+      if(videoUrl) document.getElementById('options').style.display = 'flex';
     }
-    
-  } catch (e) {
-    document.getElementById('errorBox').textContent = '⚠ ' + e.message;
-    document.getElementById('errorBox').classList.add('show');
-    document.getElementById('loader').classList.remove('show');
-  }
-}
-
-document.getElementById('urlInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') startDownload();
-});
-</script>
+    async function download(isMp3, quality) {
+      const status = document.getElementById('status');
+      status.innerText = "⏳ Hazırlanıyor...";
+      try {
+        const res = await fetch('/download', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ url: videoUrl, mp3: isMp3, quality: quality })
+        });
+        const data = await res.json();
+        if(data.redirectUrl) {
+          window.location.href = data.redirectUrl;
+          status.innerText = "✅ İndirme başladı!";
+        } else { throw new Error(data.error); }
+      } catch(e) {
+        status.innerText = "❌ Hata: " + e.message;
+      }
+    }
+  </script>
 </body>
 </html>
