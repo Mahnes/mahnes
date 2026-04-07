@@ -12,15 +12,27 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+// Proxy listesi (ücretsiz)
+const PROXIES = [
+  'http://43.153.103.58:8080',
+  'http://47.251.43.179:8080'
+];
+
+function getRandomProxy() {
+  return PROXIES[Math.floor(Math.random() * PROXIES.length)];
+}
+
 app.post('/info', async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL gerekli' });
   
   try {
+    const proxy = getRandomProxy();
     const info = await youtubedl(url, {
       dumpSingleJson: true,
       noWarnings: true,
-      noCallHome: true
+      proxy: proxy,
+      cookiesfrombrowser: null
     });
     
     const formats = (info.formats || [])
@@ -60,15 +72,19 @@ app.post('/download', async (req, res) => {
   const ext = mp3 ? 'mp3' : 'mp4';
   
   try {
+    const proxy = getRandomProxy();
     const info = await youtubedl(url, {
       dumpSingleJson: true,
-      noWarnings: true
+      noWarnings: true,
+      proxy: proxy
     });
+    
     const safeTitle = (info.title || 'video')
       .replace(/[<>:"/\\|?*]/g, '').slice(0, 60);
 
     const args = {
       noWarnings: true,
+      proxy: proxy,
       output: mp3 ? `${tmpBase}.%(ext)s` : `${tmpBase}.${ext}`
     };
     
