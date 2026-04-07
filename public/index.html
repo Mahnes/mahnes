@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>mahnes</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Nunito', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 0 60px;
+      position: relative;
+      overflow-x: hidden;
+      background: #f5f2e8;
+    }
+    .bg {
+      position: fixed;
+      inset: 0;
+      background: url('bg.png') center top / cover no-repeat;
+      opacity: 0.22;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .header-band {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      width: 100%;
+      padding: 18px 24px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(12px);
+      background: rgba(245,242,232,0.75);
+      border-bottom: 1.5px solid rgba(0,0,0,0.06);
+    }
+    .logo-pill {
+      background: #3a3a3a;
+      color: #f5f2e8;
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: 1px;
+      padding: 6px 16px;
+      border-radius: 99px;
+    }
+    .card {
+      position: relative;
+      z-index: 5;
+      width: calc(100% - 32px);
+      max-width: 480px;
+      margin: 28px 16px 0;
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(20px);
+      border: 1.5px solid rgba(255,255,255,0.9);
+      border-radius: 24px;
+      padding: 24px 20px 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.09);
+    }
+    .input-row { display: flex; gap: 8px; }
+    .url-input {
+      flex: 1;
+      background: rgba(245,242,232,0.8);
+      border: 1.5px solid rgba(0,0,0,0.1);
+      border-radius: 14px;
+      color: #2a2a2a;
+      font-family: 'Nunito', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 13px 16px;
+      outline: none;
+    }
+    .url-input:focus { border-color: #7ec87e; box-shadow: 0 0 0 3px rgba(126,200,126,0.15); }
+    .fetch-btn {
+      background: #3a3a3a;
+      border: none;
+      border-radius: 14px;
+      color: #f5f2e8;
+      font-weight: 800;
+      font-size: 14px;
+      padding: 13px 18px;
+      cursor: pointer;
+    }
+    .fetch-btn:active { transform: scale(0.96); }
+    .loader { display: none; align-items: center; justify-content: center; gap: 10px; padding: 12px 0; }
+    .loader.show { display: flex; }
+    .dots span { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #7ec87e; animation: bounce 1s infinite; }
+    @keyframes bounce { 30% { transform: translateY(-6px); } }
+    .error { display: none; background: rgba(255,80,80,0.08); border-radius: 12px; padding: 11px 14px; color: #c0392b; font-weight: 600; }
+    .error.show { display: block; }
+    .video-info { display: none; gap: 14px; align-items: flex-start; margin-top: 16px; }
+    .video-info.show { display: flex; }
+    .thumb { width: 96px; height: 54px; object-fit: cover; border-radius: 10px; }
+    .vtitle { font-size: 14px; font-weight: 700; color: #1a1a1a; }
+    .vchannel { font-size: 12px; color: #888; }
+    .formats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 16px 0 10px; }
+    .fmt-btn { background: rgba(245,242,232,0.8); border: 1.5px solid rgba(0,0,0,0.09); border-radius: 12px; padding: 10px; cursor: pointer; text-align: center; }
+    .fmt-btn.sel { border-color: #7ec87e; background: rgba(126,200,126,0.12); }
+    .fmt-q { font-size: 15px; font-weight: 800; color: #2a2a2a; }
+    .fmt-d { font-size: 10px; color: #aaa; }
+    .mp3-row { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: rgba(245,242,232,0.8); border-radius: 12px; cursor: pointer; margin-top: 8px; }
+    .mp3-row.on { border-color: #7ec87e; background: rgba(126,200,126,0.1); }
+    .sw { width: 38px; height: 22px; background: #ddd; border-radius: 11px; position: relative; }
+    .sw::after { content: ''; width: 16px; height: 16px; background: #fff; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: left 0.2s; }
+    .mp3-row.on .sw { background: #7ec87e; }
+    .mp3-row.on .sw::after { left: 19px; }
+    .dl-btn { display: none; width: 100%; background: #3a3a3a; border: none; border-radius: 16px; color: #f5f2e8; font-size: 16px; font-weight: 800; padding: 16px; cursor: pointer; margin-top: 16px; }
+    .dl-btn.show { display: block; }
+    .prog-wrap { display: none; margin-top: 14px; }
+    .prog-wrap.show { display: block; }
+    .prog-track { height: 6px; background: rgba(0,0,0,0.08); border-radius: 3px; overflow: hidden; }
+    .prog-fill { height: 100%; background: linear-gradient(90deg, #7ec87e, #a8d8a8); border-radius: 3px; width: 0%; transition: width 0.3s; }
+  </style>
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="header-band">
+    <div class="logo-pill">mahnes</div>
+  </div>
+  <div class="card">
+    <div class="input-row">
+      <input class="url-input" id="urlInput" placeholder="YouTube linki yapıştır..." />
+      <button class="fetch-btn" onclick="fetchInfo()">ARA</button>
+    </div>
+    <div class="loader" id="loader"><div class="dots"><span></span><span></span><span></span></div> analiz ediliyor</div>
+    <div class="error" id="errorBox"></div>
+    
+    <div class="video-info" id="videoInfo">
+      <img class="thumb" id="thumb" src="" />
+      <div>
+        <div class="vtitle" id="vtitle"></div>
+        <div class="vchannel" id="vchan"></div>
+      </div>
+    </div>
+    
+    <div id="fmtWrap" style="display:none">
+      <div class="formats-grid" id="fmtGrid"></div>
+      <div class="mp3-row" id="mp3Row" onclick="toggleMp3()">
+        <div class="sw"></div>
+        <span style="font-weight:700">🎵 Ses olarak indir (MP3)</span>
+      </div>
+    </div>
+    
+    <button class="dl-btn" id="dlBtn" onclick="startDownload()">⬇️ İndir</button>
+    
+    <div class="prog-wrap" id="progWrap">
+      <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+      <div id="progTxt" style="text-align:center;font-size:11px;color:#888;margin-top:6px"></div>
+    </div>
+  </div>
+
+<script>
+const API = window.location.origin;
+let selFmt = null, mp3 = false;
+
+async function fetchInfo() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) return;
+  
+  reset();
+  document.getElementById('loader').classList.add('show');
+  
+  try {
+    const r = await fetch(API + '/info', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({url})
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    
+    showInfo(d);
+    buildFormats(d.formats);
+  } catch (e) {
+    showError(e.message);
+  } finally {
+    document.getElementById('loader').classList.remove('show');
+  }
+}
+
+function showInfo(d) {
+  document.getElementById('thumb').src = d.thumbnail || '';
+  document.getElementById('vtitle').textContent = d.title || '';
+  document.getElementById('vchan').textContent = d.channel || '';
+  document.getElementById('videoInfo').classList.add('show');
+}
+
+function buildFormats(formats) {
+  const grid = document.getElementById('fmtGrid');
+  grid.innerHTML = '';
+  
+  formats.forEach((f, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'fmt-btn' + (i === 0 ? ' sel' : '');
+    btn.dataset.fid = f.format_id;
+    const size = f.filesize ? (f.filesize/1e6).toFixed(0) + 'MB' : f.ext.toUpperCase();
+    btn.innerHTML = '<span class="fmt-q">' + f.height + 'p</span><span class="fmt-d">' + size + '</span>';
+    btn.onclick = () => {
+      document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('sel'));
+      btn.classList.add('sel');
+      selFmt = f.format_id;
+      if (mp3) toggleMp3();
+    };
+    if (i === 0) selFmt = f.format_id;
+    grid.appendChild(btn);
+  });
+  
+  document.getElementById('fmtWrap').style.display = 'block';
+  document.getElementById('dlBtn').classList.add('show');
+}
+
+function toggleMp3() {
+  mp3 = !mp3;
+  document.getElementById('mp3Row').classList.toggle('on', mp3);
+  if (mp3) {
+    document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('sel'));
+    selFmt = 'bestaudio';
+  } else {
+    const first = document.querySelector('.fmt-btn');
+    if (first) {
+      first.classList.add('sel');
+      selFmt = first.dataset.fid;
+    }
+  }
+}
+
+async function startDownload() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url || !selFmt) return;
+  
+  const btn = document.getElementById('dlBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ İndiriliyor...';
+  document.getElementById('progWrap').classList.add('show');
+  
+  try {
+    const r = await fetch(API + '/download', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({url, formatId: selFmt, mp3})
+    });
+    
+    if (!r.ok) throw new Error('İndirme hatası');
+    
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const fname = r.headers.get('Content-Disposition')?.match(/filename="?(.+?)"?$/)?.[1] || 'video.' + (mp3 ? 'mp3' : 'mp4');
+    a.download = decodeURIComponent(fname);
+    a.click();
+    
+    document.getElementById('progFill').style.width = '100%';
+    document.getElementById('progTxt').textContent = '✅ Tamamlandı!';
+  } catch (e) {
+    showError(e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⬇️ İndir';
+  }
+}
+
+function showError(msg) {
+  const b = document.getElementById('errorBox');
+  b.textContent = '⚠ ' + msg;
+  b.classList.add('show');
+}
+
+function reset() {
+  ['errorBox', 'videoInfo', 'dlBtn', 'progWrap'].forEach(id => {
+    document.getElementById(id).classList.remove('show');
+  });
+  document.getElementById('fmtWrap').style.display = 'none';
+  mp3 = false;
+  document.getElementById('mp3Row').classList.remove('on');
+}
+
+document.getElementById('urlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') fetchInfo();
+});
+</script>
+</body>
+</html>
